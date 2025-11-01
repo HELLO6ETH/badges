@@ -380,14 +380,21 @@ export async function GET(request: NextRequest) {
 		}
 
 		console.log(`Total user IDs to fetch: ${allCompanyUserIds.size}`);
+		console.log(`Users breakdown before fetching: ${usersWithBadges.length} with badges, ${allCompanyUserIds.size - usersWithBadges.length} without badges`);
 
 		// Fetch user details from Whop and sort by badge value
+		// Include ALL users - those with badges AND those without badges
 		const leaderboard = await Promise.all(
 			Array.from(allCompanyUserIds).map(async (userId) => {
 				const badgeEntry = usersWithBadgesMap.get(userId);
 				const badges = badgeEntry?.badges || [];
 				const totalBadges = badgeEntry?.totalBadges || 0;
 				const highestBadgeOrder = badgeEntry?.highestBadgeOrder ?? Infinity;
+
+				// Log if user has no badges to confirm they're being included
+				if (totalBadges === 0) {
+					console.log(`Including user ${userId} without badges in leaderboard`);
+				}
 
 				try {
 					const user = await whopsdk.users.retrieve(userId);
@@ -441,6 +448,9 @@ export async function GET(request: NextRequest) {
 		);
 
 		console.log(`Successfully fetched ${leaderboard.length} users`);
+		const usersWithoutBadges = leaderboard.filter(u => u.totalBadges === 0);
+		const usersWithBadgesCount = leaderboard.filter(u => u.totalBadges > 0);
+		console.log(`📊 Final breakdown: ${usersWithBadgesCount.length} users with badges, ${usersWithoutBadges.length} users without badges`);
 
 		// Sort: users with badges first (by badge value), then users without badges (alphabetically)
 		const sortedLeaderboard = leaderboard.sort((a, b) => {
