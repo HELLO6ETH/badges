@@ -1,7 +1,6 @@
-import { Button } from "@whop/react/components";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { whopsdk } from "@/lib/whop-sdk";
+import ExperienceClient from "./ExperienceClient";
 
 export default async function ExperiencePage({
 	params,
@@ -9,52 +8,47 @@ export default async function ExperiencePage({
 	params: Promise<{ experienceId: string }>;
 }) {
 	const { experienceId } = await params;
-	// Ensure the user is logged in on whop.
 	const { userId } = await whopsdk.verifyUserToken(await headers());
 
-	// Fetch the neccessary data we want from whop.
-	const [experience, user, access] = await Promise.all([
+	// Fetch the necessary data from Whop
+	const [experience, user] = await Promise.all([
 		whopsdk.experiences.retrieve(experienceId),
 		whopsdk.users.retrieve(userId),
-		whopsdk.users.checkAccess(experienceId, { id: userId }),
 	]);
 
 	const displayName = user.name || `@${user.username}`;
+	
+	// Try different property names for companyId
+	// Log the experience object to debug what properties are available
+	console.log("=== EXPERIENCE PAGE DEBUG ===");
+	console.log("Experience object keys:", Object.keys(experience));
+	console.log("Experience object:", JSON.stringify(experience, null, 2));
+	
+	const companyId = 
+		experience.company_id || 
+		experience.companyId || 
+		(experience as any).company?.id ||
+		(experience as any).company_id ||
+		(experience as any).company_id ||
+		process.env.COMPANY_ID || // Fallback to env variable
+		"";
+
+	console.log("Extracted companyId:", companyId);
+	console.log("CompanyId from env:", process.env.COMPANY_ID);
+	console.log("CompanyIds match:", companyId === process.env.COMPANY_ID);
+
+	// If still no companyId, log a warning with the full experience object
+	if (!companyId) {
+		console.error("CompanyId not found in experience object. Available keys:", Object.keys(experience));
+		console.error("Full experience object:", experience);
+	}
 
 	return (
-		<div className="flex flex-col p-8 gap-4">
-			<div className="flex justify-between items-center gap-4">
-				<h1 className="text-9">
-					Hi <strong>{displayName}</strong>!
-				</h1>
-				<Link href="https://docs.whop.com/apps" target="_blank">
-					<Button variant="classic" className="w-full" size="3">
-						Developer Docs
-					</Button>
-				</Link>
-			</div>
-
-			<p className="text-3 text-gray-10">
-				Welcome to you whop app! Replace this template with your own app. To
-				get you started, here's some helpful data you can fetch from whop.
-			</p>
-
-			<h3 className="text-6 font-bold">Experience data</h3>
-			<JsonViewer data={experience} />
-
-			<h3 className="text-6 font-bold">User data</h3>
-			<JsonViewer data={user} />
-
-			<h3 className="text-6 font-bold">Access data</h3>
-			<JsonViewer data={access} />
-		</div>
-	);
-}
-
-function JsonViewer({ data }: { data: any }) {
-	return (
-		<pre className="text-2 border border-gray-a4 rounded-lg p-4 bg-gray-a2 max-h-72 overflow-y-auto">
-			<code className="text-gray-10">{JSON.stringify(data, null, 2)}</code>
-		</pre>
+		<ExperienceClient
+			experienceId={experienceId}
+			companyId={companyId}
+			currentUserId={userId}
+			currentUserName={displayName}
+		/>
 	);
 }

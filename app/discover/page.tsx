@@ -4,108 +4,125 @@ export default function DiscoverPage() {
 			<div className="max-w-4xl mx-auto px-4 py-16">
 				{/* Title */}
 				<h1 className="text-5xl font-bold text-gray-900 mb-6 text-center">
-					Discover your app
+					Badges: Boost Community Pride & Engagement
 				</h1>
+
 				{/* Main Description Card */}
 				<div className="bg-white rounded-xl p-8 shadow-md text-center mb-16">
 					<p className="text-xl text-gray-600 max-w-2xl mx-auto mb-4">
-						This is your app's discover page—showcase what your app does
-						and how it helps creators.
+						People love status. Design and assign custom badges like "OG," "Top
+						Earner," "Verified," or "100-Day Streak" to reward your community
+						members and drive engagement.
 					</p>
 					<p className="text-base text-gray-500 max-w-2xl mx-auto mb-2">
-						Share real success stories, link to thriving Whop communities
-						using your app, and add referral links to earn affiliate fees
-						when people install your app.
+						Badges show up on member profiles and leaderboards, creating a
+						competitive and pride-driven community atmosphere that keeps members
+						coming back.
 					</p>
 					<p className="text-sm text-gray-400 max-w-2xl mx-auto">
-						💡 <strong>Tip:</strong> Clearly explain your app's value
-						proposition and how it helps creators make money or grow their
-						communities.
+						💡 <strong>Simple to build, drives engagement hard.</strong> Boost
+						community pride and retention with visual recognition.
 					</p>
 				</div>
 
-				{/* Pro Tips Section */}
-				<div className="grid md:grid-cols-2 gap-6 mb-10">
+				{/* Features Section */}
+				<div className="grid md:grid-cols-3 gap-6 mb-10">
 					<div className="bg-white rounded-xl p-6 shadow-md flex flex-col gap-2">
-						<h3 className="font-semibold text-gray-900">
-							Showcase Real Success
-						</h3>
+						<div className="text-3xl mb-2">🎨</div>
+						<h3 className="font-semibold text-gray-900">Design Custom Badges</h3>
 						<p className="text-sm text-gray-600">
-							Link to real Whop communities using your app, with revenue
-							and member stats.
+							Create unique badges with custom emojis, colors, and descriptions.
+							Make them match your community's vibe.
 						</p>
 					</div>
+
 					<div className="bg-white rounded-xl p-6 shadow-md flex flex-col gap-2">
-						<h3 className="font-semibold text-gray-900">
-							Include Referral Links
-						</h3>
+						<div className="text-3xl mb-2">⭐</div>
+						<h3 className="font-semibold text-gray-900">Assign & Recognize</h3>
 						<p className="text-sm text-gray-600">
-							Add <code>?a=your_app_id</code> to Whop links to earn
-							affiliate commissions.
+							Easily assign badges to members for achievements, milestones, or
+							special recognition. Reward your community.
+						</p>
+					</div>
+
+					<div className="bg-white rounded-xl p-6 shadow-md flex flex-col gap-2">
+						<div className="text-3xl mb-2">🏆</div>
+						<h3 className="font-semibold text-gray-900">Leaderboards</h3>
+						<p className="text-sm text-gray-600">
+							Show off top badge earners with community leaderboards. Creates
+							healthy competition and engagement.
 						</p>
 					</div>
 				</div>
 
 				<h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-					Examples of Success Stories
+					Success Stories
 				</h2>
 
-				{/* Main Content Cards */}
+				{/* Success Story Cards */}
 				<div className="grid md:grid-cols-2 gap-6">
-					{/* Success Story Card 1 */}
 					<div className="bg-white rounded-xl p-6 shadow-md flex flex-col justify-between">
 						<div>
 							<h3 className="text-lg font-bold text-gray-900 mb-1">
-								CryptoKings
+								Elite Traders Community
 							</h3>
-							<p className="text-xs text-gray-500 mb-2">
-								Trading Community
-							</p>
+							<p className="text-xs text-gray-500 mb-2">Trading Community</p>
 							<p className="text-gray-700 mb-4 text-sm">
-								"Grew to{" "}
-								<span className="font-bold text-blue-600">
-									2,500+ members
-								</span>{" "}
-								and{" "}
-								<span className="font-bold text-blue-600">
-									$18,000+/mo
-								</span>{" "}
-								with automated signals. Members love the real-time
-								alerts!"
+								"Badges like 'Top Earner' and '100-Day Streak' increased member
+								retention by{" "}
+								<span className="font-bold text-blue-600">35%</span>. Members love
+								showing off their achievements!"
 							</p>
+							<div className="flex flex-wrap gap-2 mb-4">
+								<span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+									🏆 OG
+								</span>
+								<span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+									💎 Top Earner
+								</span>
+								<span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+									✅ Verified
+								</span>
+							</div>
 						</div>
-						<a
-							href="https://whop.com/cryptokings/?a=your_app_id"
-							className="mt-auto block w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-center text-sm"
-						>
-							Visit CryptoKings
-						</a>
 					</div>
 
-					{/* Success Story Card 2 */}
 					<div className="bg-white rounded-xl p-6 shadow-md flex flex-col justify-between">
 						<div>
 							<h3 className="text-lg font-bold text-gray-900 mb-1">
-								SignalPro
+								CryptoMasters
 							</h3>
-							<p className="text-xs text-gray-500 mb-2">
-								Premium Signals
-							</p>
+							<p className="text-xs text-gray-500 mb-2">Crypto Education</p>
 							<p className="text-gray-700 mb-4 text-sm">
-								"Retention jumped to{" "}
-								<span className="font-bold text-blue-600">92%</span>.
-								Affiliate program brought in{" "}
-								<span className="font-bold text-blue-600">$4,000+</span>{" "}
-								last quarter."
+								"Daily engagement jumped{" "}
+								<span className="font-bold text-blue-600">42%</span> after
+								introducing badges. The leaderboard feature creates friendly
+								competition that keeps members active."
 							</p>
+							<div className="flex flex-wrap gap-2 mb-4">
+								<span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
+									🔥 Hot Streak
+								</span>
+								<span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+									❤️ Community Favorite
+								</span>
+								<span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs">
+									⭐ Star Member
+								</span>
+							</div>
 						</div>
-						<a
-							href="https://whop.com/signalpro/?app=your_app_id"
-							className="mt-auto block w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-center text-sm"
-						>
-							Visit SignalPro
-						</a>
 					</div>
+				</div>
+
+				{/* CTA Section */}
+				<div className="mt-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-8 text-center text-white">
+					<h2 className="text-2xl font-bold mb-4">
+						Ready to Boost Your Community Engagement?
+					</h2>
+					<p className="text-blue-100 mb-6">
+						Add badges to your Whop community and watch engagement soar. Simple
+						setup, powerful results.
+					</p>
 				</div>
 			</div>
 		</div>
