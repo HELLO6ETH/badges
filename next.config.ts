@@ -6,11 +6,6 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ hostname: "**" }],
   },
-  experimental: {
-    turbo: {
-      root: "/Users/krishaandesai/Downloads/badges",
-    },
-  },
 };
 
 export default withWhopAppConfig(nextConfig);
