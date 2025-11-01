@@ -63,8 +63,47 @@ export async function POST(request: NextRequest) {
 		let targetUserId: string | null = null;
 
 		try {
+			// Method 0: Try users.search or users.retrieveByEmail if available (with email permission)
+			if (typeof (whopsdk as any).users?.search === 'function') {
+				console.log("Trying users.search with email:", email);
+				try {
+					const searchResult = await (whopsdk as any).users.search({ email, company_id: companyId });
+					const searchUsers = Array.isArray(searchResult) ? searchResult : (searchResult?.data || searchResult?.users || []);
+					console.log(`Found ${searchUsers.length} users via users.search`);
+					if (searchUsers.length > 0) {
+						targetUser = searchUsers[0];
+						targetUserId = targetUser.id || targetUser.user_id || targetUser.userId;
+						console.log("Found user via users.search:", targetUserId);
+					}
+				} catch (searchErr: any) {
+					console.log("users.search failed:", searchErr?.message || searchErr);
+				}
+			}
+
+			// Method 0.5: Try to list all users with email access
+			if (!targetUser && typeof (whopsdk as any).users?.list === 'function') {
+				console.log("Trying users.list to find by email (with email permission)");
+				try {
+					const usersResult = await (whopsdk as any).users.list({ company_id: companyId });
+					const users = Array.isArray(usersResult) ? usersResult : (usersResult?.data || usersResult?.users || []);
+					console.log(`Found ${users.length} users via users.list`);
+					
+					for (const user of users) {
+						const userEmail = user.email || user.email_address || user.emailAddress;
+						if (userEmail && userEmail.toLowerCase() === email.toLowerCase()) {
+							targetUser = user;
+							targetUserId = user.id || user.user_id || user.userId;
+							console.log("Found user via users.list:", targetUserId);
+							break;
+						}
+					}
+				} catch (listErr: any) {
+					console.log("users.list search failed:", listErr?.message || listErr);
+				}
+			}
+
 			// Method 1: Try subscriptions API to find user by email
-			if (typeof (whopsdk as any).subscriptions?.list === 'function') {
+			if (!targetUser && typeof (whopsdk as any).subscriptions?.list === 'function') {
 				console.log("Searching subscriptions for email:", email);
 				const subscriptions = await (whopsdk as any).subscriptions.list({
 					company_id: companyId,
@@ -103,22 +142,6 @@ export async function POST(request: NextRequest) {
 				}
 			}
 
-			// Method 2: If still not found, try to list all users and search
-			if (!targetUser && typeof (whopsdk as any).users?.list === 'function') {
-				console.log("Trying users.list to find by email");
-				const usersResult = await (whopsdk as any).users.list({ company_id: companyId });
-				const users = Array.isArray(usersResult) ? usersResult : (usersResult?.data || []);
-				
-				for (const user of users) {
-					if (user.email?.toLowerCase() === email.toLowerCase() || 
-					    user.email_address?.toLowerCase() === email.toLowerCase()) {
-						targetUser = user;
-						targetUserId = user.id;
-						console.log("Found user via users.list:", targetUserId);
-						break;
-					}
-				}
-			}
 
 			// Method 3: Try fetching members from products
 			if (!targetUser) {
@@ -156,12 +179,15 @@ export async function POST(request: NextRequest) {
 			console.error("Error searching for user by email:", error);
 		}
 
+		console.log(`User search result: targetUser=${!!targetUser}, targetUserId=${targetUserId}`);
+
 		if (!targetUser || !targetUserId) {
+			console.log("User not found after all search methods");
 			return NextResponse.json(
 				{ 
 					error: "User not found with the provided email in this company",
 					email: email,
-					suggestion: "The user may need to have an active subscription or membership in this company. Try using the 'Assign to User' option instead, or ensure the email is associated with a company member account."
+					suggestion: "The user may need to have an active subscription or membership in this company. Make sure the email is associated with a Whop account that is a member of this company. Try using the 'Assign to User' option instead if the user is already visible in the user list."
 				},
 				{ status: 404 },
 			);
