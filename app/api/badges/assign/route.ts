@@ -126,11 +126,11 @@ export async function POST(request: NextRequest) {
 			console.error(`❌ Badge not found in store!`);
 			console.error(`Requested badge ID: "${trimmedBadgeId}"`);
 			console.error(`Requested company ID: "${companyId}"`);
-			console.error(`Requested badge ID (hex):`, Array.from(trimmedBadgeId).map((c: string) => c.charCodeAt(0).toString(16)).join(' '));
+			console.error(`Requested badge ID (hex):`, [...trimmedBadgeId].map((c) => c.charCodeAt(0).toString(16)).join(' '));
 			console.error(`Total badges in store: ${allBadgesInStore.length}`);
 			console.error(`Company badges available: ${allCompanyBadges.length}`);
 			console.error(`Available badge IDs for company:`, allCompanyBadges.map(b => `"${b.id}"`));
-			console.error(`Available badge IDs (hex):`, allCompanyBadges.map(b => Array.from(b.id).map((c: string) => c.charCodeAt(0).toString(16)).join(' ')));
+			console.error(`Available badge IDs (hex):`, allCompanyBadges.map(b => [...b.id].map((c) => c.charCodeAt(0).toString(16)).join(' ')));
 			console.error(`Exact match in company:`, allCompanyBadges.some(b => b.id === trimmedBadgeId));
 			console.error(`Normalized match in company:`, allCompanyBadges.some(b => b.id.trim() === trimmedBadgeId.trim()));
 			console.error(`Exists anywhere in store:`, allBadgesInStore.some(b => b.id === trimmedBadgeId));
