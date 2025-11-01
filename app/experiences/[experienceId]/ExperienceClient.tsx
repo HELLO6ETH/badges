@@ -35,9 +35,11 @@ export default function ExperienceClient({
 	const [showSettings, setShowSettings] = useState(false);
 	const [showCreateBadgeModal, setShowCreateBadgeModal] = useState(false);
 	const [showAssignBadgeModal, setShowAssignBadgeModal] = useState(false);
+	const [showAssignByEmailModal, setShowAssignByEmailModal] = useState(false);
 	const [showUserDetailModal, setShowUserDetailModal] = useState(false);
 	const [selectedUser, setSelectedUser] = useState<UserEntry | null>(null);
 	const [assigningToUserId, setAssigningToUserId] = useState<string | null>(null);
+	const [emailInput, setEmailInput] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
 	const [formData, setFormData] = useState({
@@ -556,6 +558,87 @@ export default function ExperienceClient({
 		}
 	}
 
+	async function assignBadgeByEmail(email: string, badgeId: string) {
+		if (!email || !email.trim()) {
+			alert("Please enter an email address");
+			return;
+		}
+
+		if (!badgeId || badgeId.trim() === "") {
+			alert("Please select a badge");
+			return;
+		}
+
+		const trimmedEmail = email.trim();
+		const trimmedBadgeId = badgeId.trim();
+
+		// Validate email format
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!emailRegex.test(trimmedEmail)) {
+			alert("Please enter a valid email address");
+			return;
+		}
+
+		try {
+			const response = await fetch("/api/badges/assign-by-email", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					email: trimmedEmail,
+					badgeId: trimmedBadgeId,
+					companyId,
+				}),
+			});
+
+			if (response.ok) {
+			const data = await response.json();
+				console.log("Badge assigned by email successfully:", data);
+
+				// Get badge info for notification
+				const assignedBadge = badges.find(b => b.id === trimmedBadgeId);
+				const badgeName = assignedBadge?.name || "badge";
+				const userName = data.user?.name || trimmedEmail;
+
+				// Show notification if enabled
+				if (showNotifications) {
+					setNotification({ message: `${userName} was awarded ${badgeName}`, progress: 100 });
+					
+					// Animate progress bar
+					const startTime = Date.now();
+					const duration = 2000;
+					const interval = setInterval(() => {
+						const elapsed = Date.now() - startTime;
+						const remaining = Math.max(0, duration - elapsed);
+						const progress = (remaining / duration) * 100;
+						
+						setNotification(prev => prev ? { ...prev, progress: progress } : null);
+						
+						if (progress <= 0) {
+							clearInterval(interval);
+							setTimeout(() => setNotification(null), 50);
+						}
+					}, 16);
+				}
+
+				// Refresh users to show the new badge
+				await fetchUsers();
+				
+				// Reset and close modal
+				setEmailInput("");
+				setShowAssignByEmailModal(false);
+			} else {
+				const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+				const errorMsg = errorData.error || `Failed to assign badge (HTTP ${response.status})`;
+				const suggestion = errorData.suggestion || "";
+				alert(`Error: ${errorMsg}${suggestion ? `\n\n${suggestion}` : ""}`);
+			}
+		} catch (error) {
+			console.error("Error assigning badge by email:", error);
+			const errorMessage = error instanceof Error ? error.message : "Network error or failed to assign badge";
+			alert(`Failed to assign badge: ${errorMessage}`);
+		}
+	}
+
 	function handleDragStart(e: React.DragEvent, badgeId: string) {
 		e.dataTransfer.setData("badgeId", badgeId);
 	}
@@ -674,7 +757,7 @@ export default function ExperienceClient({
 							</div>
 						)}
 
-						<div className="mb-4">
+						<div className="mb-4 flex gap-2">
 							<Button
 								variant="classic"
 								size="3"
@@ -686,6 +769,17 @@ export default function ExperienceClient({
 								}}
 							>
 								+ Create Badge
+							</Button>
+							<Button
+								variant="ghost"
+								size="3"
+								onClick={() => {
+									setEmailInput("");
+									setShowSettings(false);
+									setShowAssignByEmailModal(true);
+								}}
+							>
+								Assign by Email
 							</Button>
 						</div>
 
@@ -858,6 +952,89 @@ export default function ExperienceClient({
 				</div>
 			)}
 
+			{/* Assign Badge by Email Modal */}
+			{showAssignByEmailModal && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => {
+					setShowAssignByEmailModal(false);
+					setEmailInput("");
+				}}>
+					<div className="bg-background border border-gray-a4 rounded-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+						<h2 className="text-7 font-bold mb-4">Assign Badge by Email</h2>
+						
+						<div className="mb-4">
+							<label className="block text-sm font-medium mb-2">Email Address</label>
+							<input
+								type="email"
+								value={emailInput}
+								onChange={(e) => setEmailInput(e.target.value)}
+								placeholder="user@example.com"
+								className="w-full px-3 py-2 border border-gray-a4 rounded-lg bg-background"
+							/>
+						</div>
+
+						{badges.length === 0 ? (
+							<div className="text-center py-8">
+								<p className="text-gray-10 mb-4">No badges available. Create one first.</p>
+								<Button
+									variant="ghost"
+									size="3"
+									onClick={() => {
+										setShowAssignByEmailModal(false);
+										setEmailInput("");
+										setShowCreateBadgeModal(true);
+									}}
+								>
+									Create Badge
+								</Button>
+							</div>
+						) : (
+							<>
+								<label className="block text-sm font-medium mb-2">Select Badge</label>
+								<div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+									{badges.map((badge) => {
+										if (!badge || !badge.id) {
+											console.warn("Invalid badge in list:", badge);
+											return null;
+										}
+										return (
+				<button
+												key={badge.id}
+												onClick={async () => {
+													if (!emailInput || !emailInput.trim()) {
+														alert("Please enter an email address");
+														return;
+													}
+													await assignBadgeByEmail(emailInput, badge.id);
+												}}
+												className="w-full text-left p-3 border border-gray-a4 rounded-lg bg-background hover:bg-gray-a2 transition-all flex items-center gap-3"
+											>
+												<BadgeDisplay badge={badge} size="md" />
+												{badge.description && (
+													<span className="text-sm text-gray-10 ml-auto">{badge.description}</span>
+												)}
+				</button>
+										);
+									})}
+			</div>
+							</>
+						)}
+						
+						<div className="mt-4 flex justify-end gap-2">
+							<Button
+								variant="ghost"
+								size="3"
+								onClick={() => {
+									setShowAssignByEmailModal(false);
+									setEmailInput("");
+								}}
+							>
+								Cancel
+							</Button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* Assign Badge Modal */}
 			{showAssignBadgeModal && assigningToUserId && (
 				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => {
@@ -969,7 +1146,7 @@ export default function ExperienceClient({
 						<p className="text-3">Loading users...</p>
 					</div>
 				) : filteredUsers.length === 0 ? (
-					<div className="text-center py-8 text-gray-10">
+						<div className="text-center py-8 text-gray-10">
 						<p className="text-3">
 							{searchQuery ? "No users found matching your search" : "No users found"}
 						</p>
@@ -978,8 +1155,8 @@ export default function ExperienceClient({
 								? "No users with badges yet. Assign badges to see them here, or check if company members API is available."
 								: ""}
 						</p>
-					</div>
-				) : (
+						</div>
+					) : (
 					<div className="space-y-3">
 						{filteredUsers.map((user) => (
 							<div
@@ -990,10 +1167,10 @@ export default function ExperienceClient({
 								}}
 								className={`border border-gray-a4 rounded-2xl p-4 flex items-center gap-4 transition-all cursor-pointer ${
 									user.userId === currentUserId
-										? "bg-blue-50 border-blue-300 shadow-sm"
-										: "bg-background hover:bg-gray-a2"
-								}`}
-							>
+											? "bg-blue-50 border-blue-300 shadow-sm"
+											: "bg-background hover:bg-gray-a2"
+									}`}
+								>
 								{/* Profile Picture */}
 								<div className="relative w-12 h-12 flex-shrink-0">
 									{user.avatar && typeof user.avatar === "string" && user.avatar.trim() !== "" ? (
@@ -1060,8 +1237,8 @@ export default function ExperienceClient({
 										>
 											+
 										</Button>
-									)}
-								</div>
+											)}
+										</div>
 							</div>
 						))}
 					</div>
@@ -1108,7 +1285,7 @@ export default function ExperienceClient({
 							</div>
 							
 							{/* User Details */}
-							<div className="flex-1">
+										<div className="flex-1">
 								<h3 className="text-2xl font-bold mb-1">
 									{selectedUser.displayName}
 									{selectedUser.userId === currentUserId && (
@@ -1157,7 +1334,7 @@ export default function ExperienceClient({
 													{badge.description && (
 														<p className="text-sm text-gray-10">{badge.description}</p>
 													)}
-												</div>
+											</div>
 											</div>
 											{isAdmin && (
 												<Button
@@ -1174,7 +1351,7 @@ export default function ExperienceClient({
 											)}
 										</div>
 									))}
-								</div>
+									</div>
 							) : (
 								<div className="text-center py-8 border border-gray-a4 rounded-lg bg-gray-a2">
 									<p className="text-gray-10 mb-3">No badges assigned</p>
@@ -1194,7 +1371,7 @@ export default function ExperienceClient({
 									)}
 								</div>
 							)}
-						</div>
+										</div>
 
 						<div className="flex justify-end">
 							<Button
@@ -1207,10 +1384,10 @@ export default function ExperienceClient({
 							>
 								Close
 							</Button>
+									</div>
+								</div>
 						</div>
-					</div>
-				</div>
-			)}
+					)}
 
 			{/* Notification Toast */}
 			{notification && (
