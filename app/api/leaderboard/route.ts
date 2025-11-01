@@ -56,7 +56,13 @@ export async function GET(request: NextRequest) {
 					
 					// Handle async iterator if it's an async generator
 					if (authorizedUsersResult && typeof authorizedUsersResult[Symbol.asyncIterator] === 'function') {
+						console.log("authorizedUsers.list returns async iterator");
+						let pageCount = 0;
 						for await (const page of authorizedUsersResult) {
+							pageCount++;
+							console.log(`Processing authorizedUsers page ${pageCount}, page type:`, typeof page);
+							console.log(`Page keys:`, Object.keys(page || {}));
+							
 							let users = [];
 							if (Array.isArray(page)) {
 								users = page;
@@ -66,23 +72,33 @@ export async function GET(request: NextRequest) {
 								users = page.users;
 							} else if (page?.items && Array.isArray(page.items)) {
 								users = page.items;
+							} else if (page?.authorizedUsers && Array.isArray(page.authorizedUsers)) {
+								users = page.authorizedUsers;
 							}
 							
+							console.log(`Found ${users.length} users in page ${pageCount}`);
 							if (users.length > 0) {
-								console.log(`Found ${users.length} authorized users in page`);
 								allMembers.push(...users);
 								// Extract user IDs
 								users.forEach((user: any) => {
-									const userId = user?.id || user?.user_id || user?.userId || user?.user?.id;
-									if (userId && typeof userId === 'string') {
-										allCompanyUserIds.add(userId);
+									const userId = user?.id || user?.user_id || user?.userId || user?.user?.id || user?.authorized_user?.id;
+									if (userId && typeof userId === 'string' && userId.trim() !== '') {
+										allCompanyUserIds.add(userId.trim());
+										console.log(`Added user ID: ${userId}`);
+									} else {
+										console.warn("User object without valid ID:", user);
 									}
 								});
 							}
 						}
+						console.log(`✅ Processed ${pageCount} pages from authorizedUsers.list`);
 					} else {
 						// Handle if it returns a promise
+						console.log("authorizedUsers.list returns promise, awaiting...");
 						const usersResult = await authorizedUsersResult;
+						console.log("authorizedUsers.list result type:", typeof usersResult);
+						console.log("authorizedUsers.list result keys:", Object.keys(usersResult || {}));
+						
 						let users = [];
 						if (Array.isArray(usersResult)) {
 							users = usersResult;
@@ -90,25 +106,69 @@ export async function GET(request: NextRequest) {
 							users = usersResult.data;
 						} else if (usersResult?.users && Array.isArray(usersResult.users)) {
 							users = usersResult.users;
+						} else if (usersResult?.items && Array.isArray(usersResult.items)) {
+							users = usersResult.items;
+						} else if (usersResult?.authorizedUsers && Array.isArray(usersResult.authorizedUsers)) {
+							users = usersResult.authorizedUsers;
 						}
 						
+						console.log(`Found ${users.length} authorized users from promise result`);
 						if (users.length > 0) {
-							console.log(`Found ${users.length} authorized users`);
 							allMembers.push(...users);
 							users.forEach((user: any) => {
-								const userId = user?.id || user?.user_id || user?.userId || user?.user?.id;
-								if (userId && typeof userId === 'string') {
-									allCompanyUserIds.add(userId);
+								const userId = user?.id || user?.user_id || user?.userId || user?.user?.id || user?.authorized_user?.id;
+								if (userId && typeof userId === 'string' && userId.trim() !== '') {
+									allCompanyUserIds.add(userId.trim());
+									console.log(`Added user ID: ${userId}`);
+								} else {
+									console.warn("User object without valid ID:", user);
 								}
 							});
 						}
 					}
-					console.log(`✅ Found ${allMembers.length} total authorized users via authorizedUsers.list`);
+					console.log(`✅ Found ${allCompanyUserIds.size} unique user IDs via authorizedUsers.list`);
 				} catch (err: any) {
-					console.warn("authorizedUsers.list failed:", err?.message || err);
+					console.error("authorizedUsers.list failed:", err?.message || err);
+					console.error("Error stack:", err?.stack);
 				}
 			} else {
 				console.log("⚠️ authorizedUsers.list is not a function");
+				console.log("authorizedUsers exists:", typeof (whopsdk as any).authorizedUsers);
+				if ((whopsdk as any).authorizedUsers) {
+					console.log("authorizedUsers keys:", Object.keys((whopsdk as any).authorizedUsers));
+				}
+			}
+			
+			// Method 0.5: Try users.list as fallback
+			if (typeof (whopsdk as any).users?.list === 'function') {
+				try {
+					console.log("Trying users.list as fallback...");
+					const usersResult = await (whopsdk as any).users.list({ company_id: companyId });
+					console.log("users.list result type:", typeof usersResult);
+					
+					let users = [];
+					if (Array.isArray(usersResult)) {
+						users = usersResult;
+					} else if (usersResult?.data && Array.isArray(usersResult.data)) {
+						users = usersResult.data;
+					} else if (usersResult?.users && Array.isArray(usersResult.users)) {
+						users = usersResult.users;
+					}
+					
+					console.log(`Found ${users.length} users via users.list`);
+					if (users.length > 0) {
+						allMembers.push(...users);
+						users.forEach((user: any) => {
+							const userId = user?.id || user?.user_id || user?.userId;
+							if (userId && typeof userId === 'string' && userId.trim() !== '') {
+								allCompanyUserIds.add(userId.trim());
+								console.log(`Added user ID from users.list: ${userId}`);
+							}
+						});
+					}
+				} catch (err: any) {
+					console.warn("users.list failed:", err?.message || err);
+				}
 			}
 			
 			// First, log what methods are available on the SDK
