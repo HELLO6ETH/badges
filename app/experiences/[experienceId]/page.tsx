@@ -25,11 +25,9 @@ export default async function ExperiencePage({
 	console.log("Experience object:", JSON.stringify(experience, null, 2));
 	
 	const companyId = 
-		experience.company_id || 
-		experience.companyId || 
+		(experience as any).company_id || 
+		(experience as any).companyId || 
 		(experience as any).company?.id ||
-		(experience as any).company_id ||
-		(experience as any).company_id ||
 		process.env.COMPANY_ID || // Fallback to env variable
 		"";
 
