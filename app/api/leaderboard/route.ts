@@ -46,6 +46,71 @@ export async function GET(request: NextRequest) {
 		const allMembers: any[] = [];
 		
 		try {
+			// Method 0: Try authorizedUsers.list (recommended method with permissions)
+			if (typeof (whopsdk as any).authorizedUsers?.list === 'function') {
+				try {
+					console.log("Trying authorizedUsers.list (recommended method)...");
+					const authorizedUsersResult = (whopsdk as any).authorizedUsers.list({
+						company_id: companyId,
+					});
+					
+					// Handle async iterator if it's an async generator
+					if (authorizedUsersResult && typeof authorizedUsersResult[Symbol.asyncIterator] === 'function') {
+						for await (const page of authorizedUsersResult) {
+							let users = [];
+							if (Array.isArray(page)) {
+								users = page;
+							} else if (page?.data && Array.isArray(page.data)) {
+								users = page.data;
+							} else if (page?.users && Array.isArray(page.users)) {
+								users = page.users;
+							} else if (page?.items && Array.isArray(page.items)) {
+								users = page.items;
+							}
+							
+							if (users.length > 0) {
+								console.log(`Found ${users.length} authorized users in page`);
+								allMembers.push(...users);
+								// Extract user IDs
+								users.forEach((user: any) => {
+									const userId = user?.id || user?.user_id || user?.userId || user?.user?.id;
+									if (userId && typeof userId === 'string') {
+										allCompanyUserIds.add(userId);
+									}
+								});
+							}
+						}
+					} else {
+						// Handle if it returns a promise
+						const usersResult = await authorizedUsersResult;
+						let users = [];
+						if (Array.isArray(usersResult)) {
+							users = usersResult;
+						} else if (usersResult?.data && Array.isArray(usersResult.data)) {
+							users = usersResult.data;
+						} else if (usersResult?.users && Array.isArray(usersResult.users)) {
+							users = usersResult.users;
+						}
+						
+						if (users.length > 0) {
+							console.log(`Found ${users.length} authorized users`);
+							allMembers.push(...users);
+							users.forEach((user: any) => {
+								const userId = user?.id || user?.user_id || user?.userId || user?.user?.id;
+								if (userId && typeof userId === 'string') {
+									allCompanyUserIds.add(userId);
+								}
+							});
+						}
+					}
+					console.log(`✅ Found ${allMembers.length} total authorized users via authorizedUsers.list`);
+				} catch (err: any) {
+					console.warn("authorizedUsers.list failed:", err?.message || err);
+				}
+			} else {
+				console.log("⚠️ authorizedUsers.list is not a function");
+			}
+			
 			// First, log what methods are available on the SDK
 			console.log("=== SDK STRUCTURE DEBUG ===");
 			console.log("whopsdk.companies exists:", typeof (whopsdk as any).companies);
