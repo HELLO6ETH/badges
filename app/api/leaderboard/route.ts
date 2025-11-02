@@ -3,6 +3,89 @@ import { NextRequest, NextResponse } from "next/server";
 import { whopsdk } from "@/lib/whop-sdk";
 import { badgeService } from "@/lib/badges";
 
+// Helper function to fetch all members via Whop API v2 Members endpoint
+async function fetchAllMembersViaAPI(companyId: string): Promise<string[]> {
+	const memberIds = new Set<string>();
+	
+	try {
+		const apiKey = process.env.WHOP_API_KEY;
+		if (!apiKey) {
+			console.warn("⚠️ WHOP_API_KEY not set, cannot fetch members via API");
+			return [];
+		}
+		
+		console.log("🔄 Fetching all members via Whop API v2 /members endpoint...");
+		
+		// Try paginated requests
+		let page = 1;
+		let hasMore = true;
+		const perPage = 100; // Max per page
+		
+		while (hasMore && page < 10) { // Limit to 10 pages (1000 members max)
+			try {
+				const url = `https://api.whop.com/api/v2/members?company_id=${companyId}&page=${page}&per_page=${perPage}`;
+				const response = await fetch(url, {
+					headers: {
+						'Authorization': `Bearer ${apiKey}`,
+						'Content-Type': 'application/json',
+					},
+				});
+				
+				if (!response.ok) {
+					const errorText = await response.text();
+					console.warn(`⚠️ API request failed (page ${page}):`, response.status, errorText);
+					hasMore = false;
+					break;
+				}
+				
+				const data = await response.json();
+				const members = data?.data || data?.members || (Array.isArray(data) ? data : []);
+				
+				console.log(`📄 Page ${page}: Found ${members.length} members`);
+				
+				if (members.length === 0) {
+					hasMore = false;
+					break;
+				}
+				
+				// Extract user IDs from members
+				members.forEach((member: any) => {
+					const userId = member?.user_id || 
+								   member?.userId || 
+								   member?.user?.id ||
+								   member?.id; // Some APIs return user ID directly
+					
+					if (userId && typeof userId === 'string' && userId.startsWith('user_')) {
+						memberIds.add(userId);
+					}
+				});
+				
+				// Check if there are more pages
+				const pagination = data?.pagination;
+				if (pagination) {
+					hasMore = pagination.has_more || pagination.hasMore || false;
+					page++;
+				} else if (members.length < perPage) {
+					hasMore = false;
+				} else {
+					page++;
+				}
+				
+			} catch (err: any) {
+				console.warn(`⚠️ Error fetching page ${page} via API:`, err?.message || err);
+				hasMore = false;
+			}
+		}
+		
+		console.log(`✅ Fetched ${memberIds.size} unique member IDs via API`);
+		return Array.from(memberIds);
+		
+	} catch (err: any) {
+		console.warn("⚠️ Failed to fetch members via API:", err?.message || err);
+		return [];
+	}
+}
+
 export async function GET(request: NextRequest) {
 	try {
 		const { userId } = await whopsdk.verifyUserToken(await headers());
@@ -59,6 +142,7 @@ export async function GET(request: NextRequest) {
 					if (authorizedUsersResult && typeof authorizedUsersResult[Symbol.asyncIterator] === 'function') {
 						console.log("authorizedUsers.list returns async iterator");
 						let itemCount = 0;
+						let totalAuthorizedUsersFound = 0;
 						for await (const item of authorizedUsersResult) {
 							itemCount++;
 							console.log(`Processing authorizedUsers item ${itemCount}, item type:`, typeof item);
@@ -513,6 +597,22 @@ export async function GET(request: NextRequest) {
 			// This is a fallback - we'll try to use the SDK's internal fetch if possible
 			if (allMembers.length === 0) {
 				console.log("⚠️ No members found via SDK methods. All members array is empty.");
+			}
+			
+			// Method 5: Try fetching all members via Whop API v2 Members endpoint
+			// This is the recommended way to get ALL members, not just admins
+			console.log("🔄 Trying to fetch all members via Whop API v2 Members endpoint...");
+			const apiMemberIds = await fetchAllMembersViaAPI(companyId);
+			if (apiMemberIds.length > 0) {
+				let addedCount = 0;
+				apiMemberIds.forEach((memberId) => {
+					const wasNew = !allCompanyUserIds.has(memberId);
+					allCompanyUserIds.add(memberId);
+					if (wasNew) {
+						addedCount++;
+					}
+				});
+				console.log(`✅ Added ${addedCount} new members from API. Total now: ${allCompanyUserIds.size}`);
 			}
 			
 		// Extract user IDs from all collected members
