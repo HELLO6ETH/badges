@@ -555,7 +555,15 @@ export async function GET(request: NextRequest) {
 			}
 
 			// Both don't have badges: sort alphabetically by name
-			return a.displayName.localeCompare(b.displayName);
+			const aName = a.displayName || a.username || a.userId;
+			const bName = b.displayName || b.username || b.userId;
+			return aName.localeCompare(bName);
+		});
+
+		// Debug: Log what we're sending
+		console.log("📤 Sending leaderboard with displayNames:");
+		sortedLeaderboard.slice(0, 5).forEach((u, i) => {
+			console.log(`  User ${i + 1}: userId=${u.userId}, displayName="${u.displayName}", type=${typeof u.displayName}, length=${u.displayName?.length}`);
 		});
 
 		return NextResponse.json({ leaderboard: sortedLeaderboard });
