@@ -337,6 +337,17 @@ export async function GET(request: NextRequest) {
 					console.log("Company member_count:", company?.member_count);
 					console.log("Company object keys:", Object.keys(company || {}));
 					
+					// Add owner_user if it exists and is a user ID
+					if (company?.owner_user) {
+						const ownerId = company.owner_user?.id || company.owner_user?.user_id || company.owner_user;
+						if (ownerId && typeof ownerId === 'string' && ownerId.startsWith('user_')) {
+							console.log(`📌 Adding owner_user: ${ownerId}`);
+							allCompanyUserIds.add(ownerId);
+						} else {
+							console.log(`⚠️ Owner user found but not a valid user ID:`, company.owner_user);
+						}
+					}
+					
 					if (company?.members && Array.isArray(company.members)) {
 						console.log(`Found ${company.members.length} members via retrieve`);
 						allMembers.push(...company.members);
@@ -358,15 +369,17 @@ export async function GET(request: NextRequest) {
 						}
 					});
 					
-					// If we have member_count but no members array, try to fetch via products/subscriptions
-					if (company?.member_count > 0 && allMembers.length === 0) {
-						console.log(`⚠️ Company has ${company.member_count} members but no member list available. Trying alternative methods...`);
+					// Always try subscriptions to get ALL members (not just admins)
+					// Note: authorizedUsers.list might only return admins, so we need subscriptions for regular members
+					console.log(`📊 Current member count: ${allCompanyUserIds.size}, Company member_count: ${company?.member_count || 0}`);
+					if (company?.member_count && company.member_count > allCompanyUserIds.size) {
+						console.log(`⚠️ We found ${allCompanyUserIds.size} members but company has ${company.member_count}. Trying subscriptions to find all members...`);
 						
 						// Try fetching members via subscriptions API
 						try {
-							// Try subscriptions.list if available
+							// Try subscriptions.list if available - this should get ALL active members
 							if (typeof (whopsdk as any).subscriptions?.list === 'function') {
-								console.log("Trying subscriptions.list to get members...");
+								console.log("🔄 Trying subscriptions.list to get ALL members...");
 								const subscriptions = await (whopsdk as any).subscriptions.list({
 									company_id: companyId,
 									status: 'active'
