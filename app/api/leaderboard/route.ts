@@ -207,10 +207,10 @@ export async function GET(request: NextRequest) {
 				}
 			}
 			
-			// Method 0.5: Try users.list as fallback
+			// Method 0.5: Try users.list as fallback - this might get ALL users, not just admins
 			if (typeof (whopsdk as any).users?.list === 'function') {
 				try {
-					console.log("Trying users.list as fallback...");
+					console.log("🔄 Trying users.list to get ALL users (not just admins)...");
 					const usersResult = await (whopsdk as any).users.list({ company_id: companyId });
 					console.log("users.list result type:", typeof usersResult);
 					
@@ -223,20 +223,28 @@ export async function GET(request: NextRequest) {
 						users = usersResult.users;
 					}
 					
-					console.log(`Found ${users.length} users via users.list`);
+					console.log(`✅ Found ${users.length} users via users.list`);
+					let addedCount = 0;
 					if (users.length > 0) {
 						allMembers.push(...users);
 						users.forEach((user: any) => {
 							const userId = user?.id || user?.user_id || user?.userId;
-							if (userId && typeof userId === 'string' && userId.trim() !== '') {
+							if (userId && typeof userId === 'string' && userId.trim() !== '' && userId.startsWith('user_')) {
+								const wasNew = !allCompanyUserIds.has(userId.trim());
 								allCompanyUserIds.add(userId.trim());
-								console.log(`Added user ID from users.list: ${userId}`);
+								if (wasNew) {
+									addedCount++;
+									console.log(`  ✅ Added user ID from users.list: ${userId}`);
+								}
 							}
 						});
+						console.log(`📊 Added ${addedCount} new members from users.list. Total now: ${allCompanyUserIds.size}`);
 					}
 				} catch (err: any) {
 					console.warn("users.list failed:", err?.message || err);
 				}
+			} else {
+				console.log("⚠️ users.list is not available");
 			}
 			
 			// First, log what methods are available on the SDK
@@ -445,9 +453,10 @@ export async function GET(request: NextRequest) {
 								console.log("⚠️ subscriptions.list is not available - cannot fetch regular members");
 							}
 							
-							// Try products.listMembers if available
+							// Try products.listMembers if available - this might get all members who have access to products
 							if (typeof (whopsdk as any).products?.listMembers === 'function' && company.products) {
-								console.log("Trying to get members from products...");
+								console.log("🔄 Trying to get members from products...");
+								let productMemberCount = 0;
 								for (const product of (company.products as any[]) || []) {
 									try {
 										const productId = product.id || product.product_id;
@@ -458,10 +467,16 @@ export async function GET(request: NextRequest) {
 												productMembers.forEach((member: any, idx: number) => {
 													const userId = member.id || member.user_id || member.userId || member.user?.id;
 													if (userId && typeof userId === 'string' && userId.startsWith('user_')) {
+														const wasNew = !allCompanyUserIds.has(userId);
 														allCompanyUserIds.add(userId);
-														if (idx < 5) console.log(`    Product member ${idx}: userId=${userId}`);
+														if (wasNew) {
+															productMemberCount++;
+															console.log(`    ✅ Product member ${idx}: Added new userId=${userId}`);
+														} else if (idx < 3) {
+															console.log(`    ℹ️ Product member ${idx}: userId=${userId} (already existed)`);
+														}
 													} else if (idx < 5) {
-														console.log(`    Product member ${idx}: No valid userId:`, { 
+														console.log(`    ⚠️ Product member ${idx}: No valid userId:`, { 
 															id: member.id, 
 															user_id: member.user_id, 
 															userId: member.userId,
@@ -476,6 +491,9 @@ export async function GET(request: NextRequest) {
 										console.warn(`Failed to get members for product ${product.id}:`, err);
 									}
 								}
+								console.log(`📊 Added ${productMemberCount} new members from products. Total now: ${allCompanyUserIds.size}`);
+							} else {
+								console.log("⚠️ products.listMembers is not available");
 							}
 					} catch (err) {
 						console.warn("Failed to fetch members via products/subscriptions:", err);
