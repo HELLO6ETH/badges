@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 							console.log(`Found ${authorizedUsers.length} authorized user entries in item ${itemCount}`);
 							
 							// Extract user IDs from authorized user objects
-							authorizedUsers.forEach((authorizedUser: any) => {
+							authorizedUsers.forEach((authorizedUser: any, idx: number) => {
 								// Each authorized user object has structure: { id, role, user }
 								// The actual user ID is in authorizedUser.user.id
 								// IMPORTANT: authorizedUser.id is the authorized user record ID (ausr_xxx), NOT the user ID
@@ -108,16 +108,31 @@ export async function GET(request: NextRequest) {
 									userId = authorizedUser.userId;
 								}
 								
+								// Debug: Log full structure for first few entries
+								if (idx < 5 || !userId) {
+									console.log(`🔍 Authorized user ${idx} structure:`, {
+										authorizedUserId: authorizedUser?.id,
+										hasUser: !!authorizedUser?.user,
+										userObject: authorizedUser?.user ? {
+											id: authorizedUser.user.id,
+											keys: Object.keys(authorizedUser.user)
+										} : null,
+										allKeys: Object.keys(authorizedUser || {}),
+										extractedUserId: userId
+									});
+								}
+								
 								if (userId && typeof userId === 'string' && userId.trim() !== '' && userId.startsWith('user_')) {
 									allCompanyUserIds.add(userId.trim());
 									allMembers.push(authorizedUser); // Store the full authorized user object too
-									console.log(`Added user ID: ${userId} from authorized user entry`);
+									console.log(`✅ Added user ID: ${userId} from authorized user entry`);
 								} else {
-									console.warn("Authorized user object without valid user ID:", {
+									console.warn(`⚠️ Authorized user object ${idx} without valid user ID:`, {
 										authorizedUserId: authorizedUser?.id,
 										hasUser: !!authorizedUser?.user,
 										userKeys: authorizedUser?.user ? Object.keys(authorizedUser.user) : [],
-										allKeys: Object.keys(authorizedUser || {})
+										allKeys: Object.keys(authorizedUser || {}),
+										fullObject: JSON.stringify(authorizedUser, null, 2).substring(0, 500)
 									});
 								}
 							});
@@ -359,18 +374,34 @@ export async function GET(request: NextRequest) {
 								
 								if (Array.isArray(subscriptions)) {
 									console.log(`Found ${subscriptions.length} active subscriptions`);
-									subscriptions.forEach((sub: any) => {
+									subscriptions.forEach((sub: any, idx: number) => {
 										const userId = sub.user_id || sub.userId || sub.user?.id;
-										if (userId) {
+										if (userId && typeof userId === 'string' && userId.startsWith('user_')) {
 											allCompanyUserIds.add(userId);
+											if (idx < 5) console.log(`  Sub ${idx}: userId=${userId}`);
+										} else if (idx < 5) {
+											console.log(`  Sub ${idx}: No valid userId found:`, { 
+												user_id: sub.user_id, 
+												userId: sub.userId, 
+												user: sub.user,
+												keys: Object.keys(sub || {})
+											});
 										}
 									});
 								} else if (subscriptions?.data && Array.isArray(subscriptions.data)) {
 									console.log(`Found ${subscriptions.data.length} active subscriptions in data array`);
-									subscriptions.data.forEach((sub: any) => {
+									subscriptions.data.forEach((sub: any, idx: number) => {
 										const userId = sub.user_id || sub.userId || sub.user?.id;
-										if (userId) {
+										if (userId && typeof userId === 'string' && userId.startsWith('user_')) {
 											allCompanyUserIds.add(userId);
+											if (idx < 5) console.log(`  Sub data ${idx}: userId=${userId}`);
+										} else if (idx < 5) {
+											console.log(`  Sub data ${idx}: No valid userId found:`, { 
+												user_id: sub.user_id, 
+												userId: sub.userId, 
+												user: sub.user,
+												keys: Object.keys(sub || {})
+											});
 										}
 									});
 								}
@@ -384,11 +415,21 @@ export async function GET(request: NextRequest) {
 										const productId = product.id || product.product_id;
 										if (productId) {
 											const productMembers = await (whopsdk as any).products.listMembers(productId);
+											console.log(`  Product ${productId} members:`, productMembers?.length || 0);
 											if (Array.isArray(productMembers)) {
-												productMembers.forEach((member: any) => {
+												productMembers.forEach((member: any, idx: number) => {
 													const userId = member.id || member.user_id || member.userId || member.user?.id;
-													if (userId) {
+													if (userId && typeof userId === 'string' && userId.startsWith('user_')) {
 														allCompanyUserIds.add(userId);
+														if (idx < 5) console.log(`    Product member ${idx}: userId=${userId}`);
+													} else if (idx < 5) {
+														console.log(`    Product member ${idx}: No valid userId:`, { 
+															id: member.id, 
+															user_id: member.user_id, 
+															userId: member.userId,
+															user: member.user,
+															keys: Object.keys(member || {})
+														});
 													}
 												});
 											}
