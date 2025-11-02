@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
 			if (typeof (whopsdk as any).authorizedUsers?.list === 'function') {
 				try {
 					console.log("Trying authorizedUsers.list (recommended method)...");
+					console.log("⚠️ Note: authorizedUsers.list might only return admins/authorized users, not all members");
 					const authorizedUsersResult = (whopsdk as any).authorizedUsers.list({
 						company_id: companyId,
 					});
@@ -88,6 +89,7 @@ export async function GET(request: NextRequest) {
 							}
 							
 							console.log(`Found ${authorizedUsers.length} authorized user entries in item ${itemCount}`);
+							totalAuthorizedUsersFound += authorizedUsers.length;
 							
 							// Extract user IDs from authorized user objects
 							authorizedUsers.forEach((authorizedUser: any, idx: number) => {
@@ -138,6 +140,8 @@ export async function GET(request: NextRequest) {
 							});
 						}
 						console.log(`✅ Processed ${itemCount} items from authorizedUsers.list`);
+						console.log(`📊 Total authorized users found: ${totalAuthorizedUsersFound}`);
+						console.log(`⚠️ If you have 8 members but only found ${totalAuthorizedUsersFound}, the missing member(s) might not be admins/authorized users. They'll appear after they visit the page.`);
 					} else {
 						// Handle if it returns a promise
 						console.log("authorizedUsers.list returns promise, awaiting...");
