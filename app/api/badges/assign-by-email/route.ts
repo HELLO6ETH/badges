@@ -62,9 +62,20 @@ export async function POST(request: NextRequest) {
 		let targetUser: any = null;
 		let targetUserId: string | null = null;
 
+		console.log("=== STARTING USER SEARCH BY EMAIL ===");
+		console.log("Email to search:", email);
+		console.log("Company ID:", companyId);
+		console.log("Available SDK methods:");
+		console.log("- whopsdk.users exists:", typeof (whopsdk as any).users);
+		console.log("- whopsdk.users.search exists:", typeof (whopsdk as any).users?.search);
+		console.log("- whopsdk.users.list exists:", typeof (whopsdk as any).users?.list);
+		console.log("- whopsdk.subscriptions exists:", typeof (whopsdk as any).subscriptions);
+		console.log("- whopsdk.subscriptions.list exists:", typeof (whopsdk as any).subscriptions?.list);
+
 		try {
 			// Method 0: Try users.search or users.retrieveByEmail if available (with email permission)
 			if (typeof (whopsdk as any).users?.search === 'function') {
+				console.log("✅ users.search is a function - trying it...");
 				console.log("Trying users.search with email:", email);
 				try {
 					const searchResult = await (whopsdk as any).users.search({ email, company_id: companyId });
@@ -76,13 +87,15 @@ export async function POST(request: NextRequest) {
 						console.log("Found user via users.search:", targetUserId);
 					}
 				} catch (searchErr: any) {
-					console.log("users.search failed:", searchErr?.message || searchErr);
+					console.log("❌ users.search failed:", searchErr?.message || searchErr);
 				}
+			} else {
+				console.log("⚠️ users.search is not a function");
 			}
 
 			// Method 0.5: Try to list all users with email access
 			if (!targetUser && typeof (whopsdk as any).users?.list === 'function') {
-				console.log("Trying users.list to find by email (with email permission)");
+				console.log("✅ users.list is a function - trying it to find by email...");
 				try {
 					const usersResult = await (whopsdk as any).users.list({ company_id: companyId });
 					const users = Array.isArray(usersResult) ? usersResult : (usersResult?.data || usersResult?.users || []);
@@ -98,13 +111,15 @@ export async function POST(request: NextRequest) {
 						}
 					}
 				} catch (listErr: any) {
-					console.log("users.list search failed:", listErr?.message || listErr);
+					console.log("❌ users.list search failed:", listErr?.message || listErr);
 				}
+			} else {
+				console.log("⚠️ users.list is not a function or user already found");
 			}
 
 			// Method 1: Try subscriptions API to find user by email
 			if (!targetUser && typeof (whopsdk as any).subscriptions?.list === 'function') {
-				console.log("Searching subscriptions for email:", email);
+				console.log("✅ subscriptions.list is a function - searching subscriptions for email:", email);
 				const subscriptions = await (whopsdk as any).subscriptions.list({
 					company_id: companyId,
 					status: 'active'
@@ -140,11 +155,13 @@ export async function POST(request: NextRequest) {
 						}
 					}
 				}
+			} else {
+				console.log("⚠️ subscriptions.list is not a function or user already found");
 			}
-
 
 			// Method 3: Try fetching members from products
 			if (!targetUser) {
+				console.log("Trying product members search...");
 				try {
 					const company = await (whopsdk as any).companies.retrieve(companyId);
 					if (company?.products && Array.isArray(company.products)) {

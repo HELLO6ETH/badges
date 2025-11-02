@@ -35,11 +35,9 @@ export default function ExperienceClient({
 	const [showSettings, setShowSettings] = useState(false);
 	const [showCreateBadgeModal, setShowCreateBadgeModal] = useState(false);
 	const [showAssignBadgeModal, setShowAssignBadgeModal] = useState(false);
-	const [showAssignByEmailModal, setShowAssignByEmailModal] = useState(false);
 	const [showUserDetailModal, setShowUserDetailModal] = useState(false);
 	const [selectedUser, setSelectedUser] = useState<UserEntry | null>(null);
 	const [assigningToUserId, setAssigningToUserId] = useState<string | null>(null);
-	const [emailInput, setEmailInput] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
 	const [formData, setFormData] = useState({
@@ -558,86 +556,6 @@ export default function ExperienceClient({
 		}
 	}
 
-	async function assignBadgeByEmail(email: string, badgeId: string) {
-		if (!email || !email.trim()) {
-			alert("Please enter an email address");
-			return;
-		}
-
-		if (!badgeId || badgeId.trim() === "") {
-			alert("Please select a badge");
-			return;
-		}
-
-		const trimmedEmail = email.trim();
-		const trimmedBadgeId = badgeId.trim();
-
-		// Validate email format
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		if (!emailRegex.test(trimmedEmail)) {
-			alert("Please enter a valid email address");
-			return;
-		}
-
-		try {
-			const response = await fetch("/api/badges/assign-by-email", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					email: trimmedEmail,
-					badgeId: trimmedBadgeId,
-					companyId,
-				}),
-			});
-
-			if (response.ok) {
-			const data = await response.json();
-				console.log("Badge assigned by email successfully:", data);
-
-				// Get badge info for notification
-				const assignedBadge = badges.find(b => b.id === trimmedBadgeId);
-				const badgeName = assignedBadge?.name || "badge";
-				const userName = data.user?.name || trimmedEmail;
-
-				// Show notification if enabled
-				if (showNotifications) {
-					setNotification({ message: `${userName} was awarded ${badgeName}`, progress: 100 });
-					
-					// Animate progress bar
-					const startTime = Date.now();
-					const duration = 2000;
-					const interval = setInterval(() => {
-						const elapsed = Date.now() - startTime;
-						const remaining = Math.max(0, duration - elapsed);
-						const progress = (remaining / duration) * 100;
-						
-						setNotification(prev => prev ? { ...prev, progress: progress } : null);
-						
-						if (progress <= 0) {
-							clearInterval(interval);
-							setTimeout(() => setNotification(null), 50);
-						}
-					}, 16);
-				}
-
-				// Refresh users to show the new badge
-				await fetchUsers();
-				
-				// Reset and close modal
-				setEmailInput("");
-				setShowAssignByEmailModal(false);
-			} else {
-				const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-				const errorMsg = errorData.error || `Failed to assign badge (HTTP ${response.status})`;
-				const suggestion = errorData.suggestion || "";
-				alert(`Error: ${errorMsg}${suggestion ? `\n\n${suggestion}` : ""}`);
-			}
-		} catch (error) {
-			console.error("Error assigning badge by email:", error);
-			const errorMessage = error instanceof Error ? error.message : "Network error or failed to assign badge";
-			alert(`Failed to assign badge: ${errorMessage}`);
-		}
-	}
 
 	function handleDragStart(e: React.DragEvent, badgeId: string) {
 		e.dataTransfer.setData("badgeId", badgeId);
@@ -769,17 +687,6 @@ export default function ExperienceClient({
 								}}
 							>
 								+ Create Badge
-							</Button>
-							<Button
-								variant="ghost"
-								size="3"
-								onClick={() => {
-									setEmailInput("");
-									setShowSettings(false);
-									setShowAssignByEmailModal(true);
-								}}
-							>
-								Assign by Email
 							</Button>
 						</div>
 
@@ -948,89 +855,6 @@ export default function ExperienceClient({
 								</Button>
 							</div>
 						</form>
-					</div>
-				</div>
-			)}
-
-			{/* Assign Badge by Email Modal */}
-			{showAssignByEmailModal && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => {
-					setShowAssignByEmailModal(false);
-					setEmailInput("");
-				}}>
-					<div className="bg-background border border-gray-a4 rounded-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-						<h2 className="text-7 font-bold mb-4">Assign Badge by Email</h2>
-						
-						<div className="mb-4">
-							<label className="block text-sm font-medium mb-2">Email Address</label>
-							<input
-								type="email"
-								value={emailInput}
-								onChange={(e) => setEmailInput(e.target.value)}
-								placeholder="user@example.com"
-								className="w-full px-3 py-2 border border-gray-a4 rounded-lg bg-background"
-							/>
-						</div>
-
-						{badges.length === 0 ? (
-							<div className="text-center py-8">
-								<p className="text-gray-10 mb-4">No badges available. Create one first.</p>
-								<Button
-									variant="ghost"
-									size="3"
-									onClick={() => {
-										setShowAssignByEmailModal(false);
-										setEmailInput("");
-										setShowCreateBadgeModal(true);
-									}}
-								>
-									Create Badge
-								</Button>
-							</div>
-						) : (
-							<>
-								<label className="block text-sm font-medium mb-2">Select Badge</label>
-								<div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
-									{badges.map((badge) => {
-										if (!badge || !badge.id) {
-											console.warn("Invalid badge in list:", badge);
-											return null;
-										}
-										return (
-				<button
-												key={badge.id}
-												onClick={async () => {
-													if (!emailInput || !emailInput.trim()) {
-														alert("Please enter an email address");
-														return;
-													}
-													await assignBadgeByEmail(emailInput, badge.id);
-												}}
-												className="w-full text-left p-3 border border-gray-a4 rounded-lg bg-background hover:bg-gray-a2 transition-all flex items-center gap-3"
-											>
-												<BadgeDisplay badge={badge} size="md" />
-												{badge.description && (
-													<span className="text-sm text-gray-10 ml-auto">{badge.description}</span>
-												)}
-				</button>
-										);
-									})}
-			</div>
-							</>
-						)}
-						
-						<div className="mt-4 flex justify-end gap-2">
-							<Button
-								variant="ghost"
-								size="3"
-								onClick={() => {
-									setShowAssignByEmailModal(false);
-									setEmailInput("");
-								}}
-							>
-								Cancel
-							</Button>
-						</div>
 					</div>
 				</div>
 			)}
@@ -1391,13 +1215,25 @@ export default function ExperienceClient({
 
 			{/* Notification Toast */}
 			{notification && (
-				<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] border border-white/20 rounded-full px-3 py-1.5 shadow-2xl min-w-[160px] max-w-[240px] animate-in slide-in-from-top-5" style={{
-					backgroundColor: '#16a34a'
-				}}>
-					<p className="text-xs font-medium mb-1.5 text-white text-center leading-tight">{notification.message}</p>
-					<div className="w-full h-0.5 bg-white/30 rounded-full overflow-hidden">
+				<div 
+					className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] rounded-xl px-4 py-3 shadow-2xl min-w-[280px] max-w-[420px] backdrop-blur-md transition-all duration-300 ease-out"
+					style={{
+						backgroundColor: 'rgba(22, 163, 74, 0.95)',
+						border: '1px solid rgba(255, 255, 255, 0.2)',
+						boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.05)'
+					}}
+				>
+					<div className="flex items-center gap-3">
+						<div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+							<svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+							</svg>
+						</div>
+						<p className="text-sm font-semibold text-white flex-1 leading-tight">{notification.message}</p>
+					</div>
+					<div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
 						<div 
-							className="h-full bg-white/60 transition-none"
+							className="h-full bg-white/90 transition-all duration-75 ease-linear rounded-full"
 							style={{ width: `${notification.progress}%` }}
 						/>
 					</div>
