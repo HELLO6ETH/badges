@@ -57,41 +57,63 @@ export async function GET(request: NextRequest) {
 					// Handle async iterator if it's an async generator
 					if (authorizedUsersResult && typeof authorizedUsersResult[Symbol.asyncIterator] === 'function') {
 						console.log("authorizedUsers.list returns async iterator");
-						let pageCount = 0;
-						for await (const page of authorizedUsersResult) {
-							pageCount++;
-							console.log(`Processing authorizedUsers page ${pageCount}, page type:`, typeof page);
-							console.log(`Page keys:`, Object.keys(page || {}));
+						let itemCount = 0;
+						for await (const item of authorizedUsersResult) {
+							itemCount++;
+							console.log(`Processing authorizedUsers item ${itemCount}, item type:`, typeof item);
+							console.log(`Item keys:`, Object.keys(item || {}));
 							
-							let users = [];
-							if (Array.isArray(page)) {
-								users = page;
-							} else if (page?.data && Array.isArray(page.data)) {
-								users = page.data;
-							} else if (page?.users && Array.isArray(page.users)) {
-								users = page.users;
-							} else if (page?.items && Array.isArray(page.items)) {
-								users = page.items;
-							} else if (page?.authorizedUsers && Array.isArray(page.authorizedUsers)) {
-								users = page.authorizedUsers;
+							// Handle different response formats
+							let authorizedUsers: any[] = [];
+							
+							// If item is an array, it's a batch of authorized users
+							if (Array.isArray(item)) {
+								authorizedUsers = item;
+							}
+							// If item has a data array, use that
+							else if (item?.data && Array.isArray(item.data)) {
+								authorizedUsers = item.data;
+							}
+							// If item has authorizedUsers array, use that
+							else if (item?.authorizedUsers && Array.isArray(item.authorizedUsers)) {
+								authorizedUsers = item.authorizedUsers;
+							}
+							// If item is a single authorized user object with { id, role, user }
+							else if (item && typeof item === 'object' && item.user) {
+								authorizedUsers = [item];
+							}
+							// If item has users array
+							else if (item?.users && Array.isArray(item.users)) {
+								authorizedUsers = item.users;
 							}
 							
-							console.log(`Found ${users.length} users in page ${pageCount}`);
-							if (users.length > 0) {
-								allMembers.push(...users);
-								// Extract user IDs
-								users.forEach((user: any) => {
-									const userId = user?.id || user?.user_id || user?.userId || user?.user?.id || user?.authorized_user?.id;
-									if (userId && typeof userId === 'string' && userId.trim() !== '') {
-										allCompanyUserIds.add(userId.trim());
-										console.log(`Added user ID: ${userId}`);
-									} else {
-										console.warn("User object without valid ID:", user);
+							console.log(`Found ${authorizedUsers.length} authorized user entries in item ${itemCount}`);
+							
+							// Extract user IDs from authorized user objects
+							authorizedUsers.forEach((authorizedUser: any) => {
+								// Each authorized user object has structure: { id, role, user }
+								// The actual user ID is in authorizedUser.user.id
+								const userId = authorizedUser?.user?.id || 
+											   authorizedUser?.user?.user_id || 
+											   authorizedUser?.user_id || 
+											   authorizedUser?.user?.userId ||
+											   authorizedUser?.id || 
+											   authorizedUser?.userId;
+								
+								if (userId && typeof userId === 'string' && userId.trim() !== '') {
+									allCompanyUserIds.add(userId.trim());
+									allMembers.push(authorizedUser); // Store the full authorized user object too
+									console.log(`Added user ID: ${userId} from authorized user entry`);
+								} else {
+									console.warn("Authorized user object without valid user ID:", authorizedUser);
+									console.warn("Available keys:", Object.keys(authorizedUser || {}));
+									if (authorizedUser?.user) {
+										console.warn("User object keys:", Object.keys(authorizedUser.user));
 									}
-								});
-							}
+								}
+							});
 						}
-						console.log(`✅ Processed ${pageCount} pages from authorizedUsers.list`);
+						console.log(`✅ Processed ${itemCount} items from authorizedUsers.list`);
 					} else {
 						// Handle if it returns a promise
 						console.log("authorizedUsers.list returns promise, awaiting...");
@@ -99,29 +121,42 @@ export async function GET(request: NextRequest) {
 						console.log("authorizedUsers.list result type:", typeof usersResult);
 						console.log("authorizedUsers.list result keys:", Object.keys(usersResult || {}));
 						
-						let users = [];
+						let authorizedUsers: any[] = [];
 						if (Array.isArray(usersResult)) {
-							users = usersResult;
+							authorizedUsers = usersResult;
 						} else if (usersResult?.data && Array.isArray(usersResult.data)) {
-							users = usersResult.data;
-						} else if (usersResult?.users && Array.isArray(usersResult.users)) {
-							users = usersResult.users;
-						} else if (usersResult?.items && Array.isArray(usersResult.items)) {
-							users = usersResult.items;
+							authorizedUsers = usersResult.data;
 						} else if (usersResult?.authorizedUsers && Array.isArray(usersResult.authorizedUsers)) {
-							users = usersResult.authorizedUsers;
+							authorizedUsers = usersResult.authorizedUsers;
+						} else if (usersResult?.users && Array.isArray(usersResult.users)) {
+							authorizedUsers = usersResult.users;
+						} else if (usersResult?.items && Array.isArray(usersResult.items)) {
+							authorizedUsers = usersResult.items;
 						}
 						
-						console.log(`Found ${users.length} authorized users from promise result`);
-						if (users.length > 0) {
-							allMembers.push(...users);
-							users.forEach((user: any) => {
-								const userId = user?.id || user?.user_id || user?.userId || user?.user?.id || user?.authorized_user?.id;
+						console.log(`Found ${authorizedUsers.length} authorized users from promise result`);
+						if (authorizedUsers.length > 0) {
+							allMembers.push(...authorizedUsers);
+							// Extract user IDs from authorized user objects
+							authorizedUsers.forEach((authorizedUser: any) => {
+								// Each authorized user object has structure: { id, role, user }
+								// The actual user ID is in authorizedUser.user.id
+								const userId = authorizedUser?.user?.id || 
+											   authorizedUser?.user?.user_id || 
+											   authorizedUser?.user_id || 
+											   authorizedUser?.user?.userId ||
+											   authorizedUser?.id || 
+											   authorizedUser?.userId;
+								
 								if (userId && typeof userId === 'string' && userId.trim() !== '') {
 									allCompanyUserIds.add(userId.trim());
-									console.log(`Added user ID: ${userId}`);
+									console.log(`Added user ID: ${userId} from authorized user entry`);
 								} else {
-									console.warn("User object without valid ID:", user);
+									console.warn("Authorized user object without valid user ID:", authorizedUser);
+									console.warn("Available keys:", Object.keys(authorizedUser || {}));
+									if (authorizedUser?.user) {
+										console.warn("User object keys:", Object.keys(authorizedUser.user));
+									}
 								}
 							});
 						}
