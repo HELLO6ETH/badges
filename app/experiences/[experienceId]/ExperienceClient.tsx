@@ -67,9 +67,12 @@ export default function ExperienceClient({
 			console.log("Fetched users data:", data);
 			if (data.leaderboard) {
 				console.log(`Setting ${data.leaderboard.length} users`);
-				console.log("Users with avatars:", data.leaderboard.map((u: UserEntry) => ({
+				console.log("Users with names:", data.leaderboard.map((u: UserEntry) => ({
 					userId: u.userId,
 					displayName: u.displayName,
+					displayNameType: typeof u.displayName,
+					displayNameLength: u.displayName?.length,
+					username: u.username,
 					avatar: u.avatar,
 					hasAvatar: !!u.avatar
 				})));
@@ -1032,7 +1035,7 @@ export default function ExperienceClient({
 								{/* Name */}
 								<div className="flex-1">
 									<h3 className="font-semibold text-lg">
-										{user.displayName}
+										{user.displayName || user.username || `User ${user.userId.substring(0, 8)}`}
 										{user.userId === currentUserId && (
 											<span className="ml-2 text-sm text-blue-600 font-normal">(You)</span>
 										)}
@@ -1114,7 +1117,7 @@ export default function ExperienceClient({
 							{/* User Details */}
 										<div className="flex-1">
 								<h3 className="text-2xl font-bold mb-1">
-									{selectedUser.displayName}
+									{selectedUser.displayName || selectedUser.username || `User ${selectedUser.userId.substring(0, 8)}`}
 									{selectedUser.userId === currentUserId && (
 										<span className="ml-2 text-sm text-blue-600 font-normal">(You)</span>
 									)}
