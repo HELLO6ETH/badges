@@ -12,8 +12,10 @@ if (!process.env.NEXT_PUBLIC_WHOP_APP_ID) {
 	);
 }
 
+// During build time, environment variables might not be available
+// Use empty strings as fallback to prevent build errors
 export const whopsdk = new Whop({
-	appID: process.env.NEXT_PUBLIC_WHOP_APP_ID,
-	apiKey: process.env.WHOP_API_KEY,
+	appID: process.env.NEXT_PUBLIC_WHOP_APP_ID || "",
+	apiKey: process.env.WHOP_API_KEY || "",
 	webhookKey: btoa(process.env.WHOP_WEBHOOK_SECRET || ""),
 });
