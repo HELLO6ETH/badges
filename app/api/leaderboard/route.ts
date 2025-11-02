@@ -372,18 +372,16 @@ export async function GET(request: NextRequest) {
 					// Always try subscriptions to get ALL members (not just admins)
 					// Note: authorizedUsers.list might only return admins, so we need subscriptions for regular members
 					console.log(`📊 Current member count: ${allCompanyUserIds.size}, Company member_count: ${company?.member_count || 0}`);
-					if (company?.member_count && company.member_count > allCompanyUserIds.size) {
-						console.log(`⚠️ We found ${allCompanyUserIds.size} members but company has ${company.member_count}. Trying subscriptions to find all members...`);
-						
-						// Try fetching members via subscriptions API
-						try {
-							// Try subscriptions.list if available - this should get ALL active members
-							if (typeof (whopsdk as any).subscriptions?.list === 'function') {
-								console.log("🔄 Trying subscriptions.list to get ALL members...");
-								const subscriptions = await (whopsdk as any).subscriptions.list({
-									company_id: companyId,
-									status: 'active'
-								});
+					
+					// Try fetching members via subscriptions API - this should get ALL active members
+					try {
+						// Try subscriptions.list if available - this should get ALL active members
+						if (typeof (whopsdk as any).subscriptions?.list === 'function') {
+							console.log("🔄 Trying subscriptions.list to get ALL members (including regular members)...");
+							const subscriptions = await (whopsdk as any).subscriptions.list({
+								company_id: companyId,
+								status: 'active'
+							});
 								
 								if (Array.isArray(subscriptions)) {
 									console.log(`Found ${subscriptions.length} active subscriptions`);
