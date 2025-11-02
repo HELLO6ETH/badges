@@ -384,14 +384,21 @@ export async function GET(request: NextRequest) {
 							});
 								
 								if (Array.isArray(subscriptions)) {
-									console.log(`Found ${subscriptions.length} active subscriptions`);
+									console.log(`✅ Found ${subscriptions.length} active subscriptions`);
+									let addedCount = 0;
 									subscriptions.forEach((sub: any, idx: number) => {
 										const userId = sub.user_id || sub.userId || sub.user?.id;
 										if (userId && typeof userId === 'string' && userId.startsWith('user_')) {
+											const wasNew = !allCompanyUserIds.has(userId);
 											allCompanyUserIds.add(userId);
-											if (idx < 5) console.log(`  Sub ${idx}: userId=${userId}`);
-										} else if (idx < 5) {
-											console.log(`  Sub ${idx}: No valid userId found:`, { 
+											if (wasNew) {
+												addedCount++;
+												console.log(`  ✅ Sub ${idx}: Added new userId=${userId}`);
+											} else if (idx < 5) {
+												console.log(`  ℹ️ Sub ${idx}: userId=${userId} (already existed)`);
+											}
+										} else if (idx < 10) {
+											console.log(`  ⚠️ Sub ${idx}: No valid userId found:`, { 
 												user_id: sub.user_id, 
 												userId: sub.userId, 
 												user: sub.user,
@@ -399,15 +406,23 @@ export async function GET(request: NextRequest) {
 											});
 										}
 									});
+									console.log(`📊 Added ${addedCount} new members from subscriptions. Total now: ${allCompanyUserIds.size}`);
 								} else if (subscriptions?.data && Array.isArray(subscriptions.data)) {
-									console.log(`Found ${subscriptions.data.length} active subscriptions in data array`);
+									console.log(`✅ Found ${subscriptions.data.length} active subscriptions in data array`);
+									let addedCount = 0;
 									subscriptions.data.forEach((sub: any, idx: number) => {
 										const userId = sub.user_id || sub.userId || sub.user?.id;
 										if (userId && typeof userId === 'string' && userId.startsWith('user_')) {
+											const wasNew = !allCompanyUserIds.has(userId);
 											allCompanyUserIds.add(userId);
-											if (idx < 5) console.log(`  Sub data ${idx}: userId=${userId}`);
-										} else if (idx < 5) {
-											console.log(`  Sub data ${idx}: No valid userId found:`, { 
+											if (wasNew) {
+												addedCount++;
+												console.log(`  ✅ Sub data ${idx}: Added new userId=${userId}`);
+											} else if (idx < 5) {
+												console.log(`  ℹ️ Sub data ${idx}: userId=${userId} (already existed)`);
+											}
+										} else if (idx < 10) {
+											console.log(`  ⚠️ Sub data ${idx}: No valid userId found:`, { 
 												user_id: sub.user_id, 
 												userId: sub.userId, 
 												user: sub.user,
@@ -415,7 +430,19 @@ export async function GET(request: NextRequest) {
 											});
 										}
 									});
+									console.log(`📊 Added ${addedCount} new members from subscriptions.data. Total now: ${allCompanyUserIds.size}`);
+								} else {
+									console.log("⚠️ subscriptions.list returned unexpected format:", {
+										type: typeof subscriptions,
+										isArray: Array.isArray(subscriptions),
+										hasData: !!subscriptions?.data,
+										keys: subscriptions ? Object.keys(subscriptions) : []
+									});
 								}
+								
+								console.log(`📊 Final count after subscriptions: ${allCompanyUserIds.size} members`);
+							} else {
+								console.log("⚠️ subscriptions.list is not available - cannot fetch regular members");
 							}
 							
 							// Try products.listMembers if available
