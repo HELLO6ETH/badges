@@ -555,6 +555,17 @@ export async function GET(request: NextRequest) {
 		console.log(`Users breakdown before fetching: ${usersWithBadges.length} with badges, ${allCompanyUserIds.size - usersWithBadges.length} without badges`);
 		console.log(`📋 All user IDs to fetch (${allCompanyUserIds.size} total):`, Array.from(allCompanyUserIds).sort());
 		console.log(`🔢 Expected: 8 members (including you)`);
+		
+		// Important note about missing members
+		if (allCompanyUserIds.size < 8) {
+			const missingCount = 8 - allCompanyUserIds.size;
+			console.log(`⚠️ ⚠️ ⚠️ MISSING ${missingCount} MEMBER(S) ⚠️ ⚠️ ⚠️`);
+			console.log(`📝 Explanation:`);
+			console.log(`   - authorizedUsers.list only returns admins/authorized users`);
+			console.log(`   - Regular members (non-admins) won't appear until they visit the page`);
+			console.log(`   - Once they visit, they'll be tracked and appear automatically`);
+			console.log(`   - To see them immediately, they need to visit the badge page once`);
+		}
 		console.log(`📋 All user IDs to fetch:`, Array.from(allCompanyUserIds).slice(0, 10));
 
 		// Fetch user details from Whop and sort by badge value
