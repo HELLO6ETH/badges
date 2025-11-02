@@ -93,23 +93,32 @@ export async function GET(request: NextRequest) {
 							authorizedUsers.forEach((authorizedUser: any) => {
 								// Each authorized user object has structure: { id, role, user }
 								// The actual user ID is in authorizedUser.user.id
-								const userId = authorizedUser?.user?.id || 
+								// IMPORTANT: authorizedUser.id is the authorized user record ID (ausr_xxx), NOT the user ID
+								let userId = authorizedUser?.user?.id || 
 											   authorizedUser?.user?.user_id || 
 											   authorizedUser?.user_id || 
-											   authorizedUser?.user?.userId ||
-											   authorizedUser?.id || 
-											   authorizedUser?.userId;
+											   authorizedUser?.user?.userId;
 								
-								if (userId && typeof userId === 'string' && userId.trim() !== '') {
+								// Only use authorizedUser.id if it looks like a user ID (starts with 'user_'), not 'ausr_'
+								if (!userId && authorizedUser?.id && typeof authorizedUser.id === 'string' && authorizedUser.id.startsWith('user_')) {
+									userId = authorizedUser.id;
+								}
+								// Same for authorizedUser.userId
+								if (!userId && authorizedUser?.userId && typeof authorizedUser.userId === 'string' && authorizedUser.userId.startsWith('user_')) {
+									userId = authorizedUser.userId;
+								}
+								
+								if (userId && typeof userId === 'string' && userId.trim() !== '' && userId.startsWith('user_')) {
 									allCompanyUserIds.add(userId.trim());
 									allMembers.push(authorizedUser); // Store the full authorized user object too
 									console.log(`Added user ID: ${userId} from authorized user entry`);
 								} else {
-									console.warn("Authorized user object without valid user ID:", authorizedUser);
-									console.warn("Available keys:", Object.keys(authorizedUser || {}));
-									if (authorizedUser?.user) {
-										console.warn("User object keys:", Object.keys(authorizedUser.user));
-									}
+									console.warn("Authorized user object without valid user ID:", {
+										authorizedUserId: authorizedUser?.id,
+										hasUser: !!authorizedUser?.user,
+										userKeys: authorizedUser?.user ? Object.keys(authorizedUser.user) : [],
+										allKeys: Object.keys(authorizedUser || {})
+									});
 								}
 							});
 						}
@@ -141,22 +150,31 @@ export async function GET(request: NextRequest) {
 							authorizedUsers.forEach((authorizedUser: any) => {
 								// Each authorized user object has structure: { id, role, user }
 								// The actual user ID is in authorizedUser.user.id
-								const userId = authorizedUser?.user?.id || 
+								// IMPORTANT: authorizedUser.id is the authorized user record ID (ausr_xxx), NOT the user ID
+								let userId = authorizedUser?.user?.id || 
 											   authorizedUser?.user?.user_id || 
 											   authorizedUser?.user_id || 
-											   authorizedUser?.user?.userId ||
-											   authorizedUser?.id || 
-											   authorizedUser?.userId;
+											   authorizedUser?.user?.userId;
 								
-								if (userId && typeof userId === 'string' && userId.trim() !== '') {
+								// Only use authorizedUser.id if it looks like a user ID (starts with 'user_'), not 'ausr_'
+								if (!userId && authorizedUser?.id && typeof authorizedUser.id === 'string' && authorizedUser.id.startsWith('user_')) {
+									userId = authorizedUser.id;
+								}
+								// Same for authorizedUser.userId
+								if (!userId && authorizedUser?.userId && typeof authorizedUser.userId === 'string' && authorizedUser.userId.startsWith('user_')) {
+									userId = authorizedUser.userId;
+								}
+								
+								if (userId && typeof userId === 'string' && userId.trim() !== '' && userId.startsWith('user_')) {
 									allCompanyUserIds.add(userId.trim());
 									console.log(`Added user ID: ${userId} from authorized user entry`);
 								} else {
-									console.warn("Authorized user object without valid user ID:", authorizedUser);
-									console.warn("Available keys:", Object.keys(authorizedUser || {}));
-									if (authorizedUser?.user) {
-										console.warn("User object keys:", Object.keys(authorizedUser.user));
-									}
+									console.warn("Authorized user object without valid user ID:", {
+										authorizedUserId: authorizedUser?.id,
+										hasUser: !!authorizedUser?.user,
+										userKeys: authorizedUser?.user ? Object.keys(authorizedUser.user) : [],
+										allKeys: Object.keys(authorizedUser || {})
+									});
 								}
 							});
 						}
@@ -397,14 +415,33 @@ export async function GET(request: NextRequest) {
 				console.log("⚠️ No members found via SDK methods. All members array is empty.");
 			}
 			
-			// Extract user IDs from all collected members
-			allMembers.forEach((member: any) => {
-				const memberId = member?.id || member?.userId || member?.user?.id || member?.user_id || 
-				               (typeof member === 'string' ? member : null);
-				if (memberId && typeof memberId === 'string' && memberId.trim() !== '') {
-					allCompanyUserIds.add(memberId.trim());
-				}
-			});
+		// Extract user IDs from all collected members
+		// IMPORTANT: Filter out 'ausr_' IDs (authorized user record IDs) - only keep 'user_' IDs
+		allMembers.forEach((member: any) => {
+			// Prioritize user.id over member.id (member.id might be ausr_xxx)
+			let memberId = member?.user?.id || 
+			              member?.user?.user_id || 
+			              member?.user?.userId ||
+			              member?.user_id;
+			
+			// Only use member.id or member.userId if it's a user ID (starts with 'user_'), not 'ausr_'
+			if (!memberId && member?.id && typeof member.id === 'string' && member.id.startsWith('user_')) {
+				memberId = member.id;
+			}
+			if (!memberId && member?.userId && typeof member.userId === 'string' && member.userId.startsWith('user_')) {
+				memberId = member.userId;
+			}
+			
+			// Handle if member is just a string
+			if (!memberId && typeof member === 'string' && member.startsWith('user_')) {
+				memberId = member;
+			}
+			
+			// Only add if it's a valid user ID (starts with 'user_')
+			if (memberId && typeof memberId === 'string' && memberId.trim() !== '' && memberId.startsWith('user_')) {
+				allCompanyUserIds.add(memberId.trim());
+			}
+		});
 			
 			console.log(`✅ Collected ${allCompanyUserIds.size} total unique user IDs from all methods`);
 			console.log(`📊 Breakdown: ${usersWithBadges.length} with badges, ${trackedUsers.length} tracked, ${allMembers.length} from company APIs`);
@@ -416,6 +453,7 @@ export async function GET(request: NextRequest) {
 
 		console.log(`Total user IDs to fetch: ${allCompanyUserIds.size}`);
 		console.log(`Users breakdown before fetching: ${usersWithBadges.length} with badges, ${allCompanyUserIds.size - usersWithBadges.length} without badges`);
+		console.log(`📋 All user IDs to fetch:`, Array.from(allCompanyUserIds).slice(0, 10));
 
 		// Fetch user details from Whop and sort by badge value
 		// Include ALL users - those with badges AND those without badges

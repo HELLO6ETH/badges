@@ -1096,7 +1096,8 @@ export default function ExperienceClient({
 											)}
 										</div>
 							</div>
-						))}
+							);
+						})}
 					</div>
 				)}
 
