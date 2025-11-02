@@ -585,12 +585,15 @@ export default function ExperienceClient({
 	}
 
 	const filteredUsers = users.filter((user) => {
-		if (!searchQuery) return true;
-		const query = searchQuery.toLowerCase();
+		if (!searchQuery || searchQuery.trim() === "") return true;
+		const query = searchQuery.toLowerCase().trim();
+		const displayName = (user.displayName || "").toLowerCase();
+		const username = (user.username || "").toLowerCase();
+		const userId = (user.userId || "").toLowerCase();
 		return (
-			user.displayName.toLowerCase().includes(query) ||
-			user.username?.toLowerCase().includes(query) ||
-			user.userId.toLowerCase().includes(query)
+			displayName.includes(query) ||
+			username.includes(query) ||
+			userId.includes(query)
 		);
 	});
 

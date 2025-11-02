@@ -436,6 +436,21 @@ export async function GET(request: NextRequest) {
 					
 					// Try multiple possible property names for profile picture
 					const userObj = user as any;
+					
+					// Log user object structure for debugging (first few users only)
+					if (allCompanyUserIds.size <= 5 || Array.from(allCompanyUserIds).indexOf(userId) < 3) {
+						console.log(`=== User object for ${userId} ===`);
+						console.log(`Available keys:`, Object.keys(userObj));
+						console.log(`Name properties:`, {
+							name: userObj.name,
+							display_name: userObj.display_name,
+							displayName: userObj.displayName,
+							full_name: userObj.full_name,
+							fullName: userObj.fullName,
+							username: userObj.username,
+						});
+					}
+					
 					const avatarValue = 
 						userObj.profilePicture || 
 						userObj.profile_picture || 
@@ -463,24 +478,28 @@ export async function GET(request: NextRequest) {
 						}
 					}
 					
-					// Extract display name - try multiple property names
-					const displayName = 
+					// Extract display name - try multiple property names in order of preference
+					let displayName: string = 
 						userObj.name || 
 						userObj.display_name || 
 						userObj.displayName || 
 						userObj.full_name || 
 						userObj.fullName ||
-						(userObj.username ? `@${userObj.username}` : null) ||
-						`User ${userId.substring(0, 8)}`;
+						null;
+					
+					// If no name found, try username
+					if (!displayName && userObj.username) {
+						displayName = userObj.username; // Just username, no @ prefix
+					}
+					
+					// Last resort fallback
+					if (!displayName) {
+						displayName = `User ${userId.substring(0, 8)}`;
+						console.log(`⚠️ No name found for user ${userId}. Full user object keys:`, Object.keys(userObj));
+					}
 					
 					// Extract username
 					const username = userObj.username || null;
-					
-					// Log for debugging if name extraction fails
-					if (displayName.startsWith('User ')) {
-						console.log(`⚠️ Could not extract name for user ${userId}. Available keys:`, Object.keys(userObj));
-						console.log(`User object sample:`, JSON.stringify({ name: userObj.name, username: userObj.username, display_name: userObj.display_name }, null, 2));
-					}
 					
 					return {
 						userId: userId,
