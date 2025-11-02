@@ -478,24 +478,28 @@ export async function GET(request: NextRequest) {
 						}
 					}
 					
-					// Extract display name - try multiple property names in order of preference
+					// Extract display name - the user object has 'name' property (verified in logs)
+					// Try direct access first, then fallback to other properties
 					let displayName: string = 
-						userObj.name || 
-						userObj.display_name || 
-						userObj.displayName || 
-						userObj.full_name || 
-						userObj.fullName ||
+						(userObj.name && String(userObj.name).trim()) || 
+						(userObj.display_name && String(userObj.display_name).trim()) || 
+						(userObj.displayName && String(userObj.displayName).trim()) || 
+						(userObj.full_name && String(userObj.full_name).trim()) || 
+						(userObj.fullName && String(userObj.fullName).trim()) ||
 						null;
 					
 					// If no name found, try username
 					if (!displayName && userObj.username) {
-						displayName = userObj.username; // Just username, no @ prefix
+						displayName = String(userObj.username).trim(); // Just username, no @ prefix
 					}
 					
 					// Last resort fallback
-					if (!displayName) {
+					if (!displayName || displayName === '') {
 						displayName = `User ${userId.substring(0, 8)}`;
 						console.log(`⚠️ No name found for user ${userId}. Full user object keys:`, Object.keys(userObj));
+						console.log(`⚠️ userObj.name value:`, userObj.name, `type:`, typeof userObj.name);
+					} else {
+						console.log(`✅ Extracted name for ${userId}: "${displayName}"`);
 					}
 					
 					// Extract username
