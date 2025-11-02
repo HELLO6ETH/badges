@@ -494,6 +494,8 @@ export async function GET(request: NextRequest) {
 
 		console.log(`Total user IDs to fetch: ${allCompanyUserIds.size}`);
 		console.log(`Users breakdown before fetching: ${usersWithBadges.length} with badges, ${allCompanyUserIds.size - usersWithBadges.length} without badges`);
+		console.log(`📋 All user IDs to fetch (${allCompanyUserIds.size} total):`, Array.from(allCompanyUserIds).sort());
+		console.log(`🔢 Expected: 8 members (including you)`);
 		console.log(`📋 All user IDs to fetch:`, Array.from(allCompanyUserIds).slice(0, 10));
 
 		// Fetch user details from Whop and sort by badge value
