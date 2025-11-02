@@ -435,7 +435,6 @@ export async function GET(request: NextRequest) {
 					const user = await whopsdk.users.retrieve(userId);
 					
 					// Try multiple possible property names for profile picture
-					// Log the actual user object to see what's available
 					const userObj = user as any;
 					const avatarValue = 
 						userObj.profilePicture || 
@@ -464,19 +463,29 @@ export async function GET(request: NextRequest) {
 						}
 					}
 					
-					// Log for debugging
-					if (!avatarUrl) {
-						console.log(`⚠️ No avatar URL found for user ${userId}. Available keys:`, Object.keys(userObj));
-						if (avatarValue) {
-							console.log(`Avatar value (not URL):`, avatarValue);
-						}
-					} else {
-						console.log(`✅ Avatar URL found for user ${userId}:`, avatarUrl);
+					// Extract display name - try multiple property names
+					const displayName = 
+						userObj.name || 
+						userObj.display_name || 
+						userObj.displayName || 
+						userObj.full_name || 
+						userObj.fullName ||
+						(userObj.username ? `@${userObj.username}` : null) ||
+						`User ${userId.substring(0, 8)}`;
+					
+					// Extract username
+					const username = userObj.username || null;
+					
+					// Log for debugging if name extraction fails
+					if (displayName.startsWith('User ')) {
+						console.log(`⚠️ Could not extract name for user ${userId}. Available keys:`, Object.keys(userObj));
+						console.log(`User object sample:`, JSON.stringify({ name: userObj.name, username: userObj.username, display_name: userObj.display_name }, null, 2));
 					}
+					
 					return {
 						userId: userId,
-						displayName: user.name || `@${user.username}`,
-						username: user.username,
+						displayName: displayName,
+						username: username,
 						avatar: avatarUrl,
 						badges: badges,
 						totalBadges: totalBadges,

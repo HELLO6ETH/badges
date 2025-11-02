@@ -1019,10 +1019,10 @@ export default function ExperienceClient({
 									) : null}
 									<div
 										className={`avatar-fallback w-12 h-12 rounded-full bg-gray-a4 flex items-center justify-center text-lg font-bold text-gray-10 border border-gray-a4 ${
-											user.avatar && typeof user.avatar === "string" && user.avatar.trim() !== "" ? "absolute inset-0" : ""
+											user.avatar && typeof user.avatar === "string" && user.avatar.trim() !== "" ? "hidden" : ""
 										}`}
 									>
-										{user.displayName.charAt(0).toUpperCase()}
+										{user.displayName && user.displayName.length > 0 ? user.displayName.charAt(0).toUpperCase() : "?"}
 									</div>
 								</div>
 
@@ -1101,10 +1101,10 @@ export default function ExperienceClient({
 								) : null}
 								<div
 									className={`avatar-fallback w-20 h-20 rounded-full bg-gray-a4 flex items-center justify-center text-3xl font-bold text-gray-10 border border-gray-a4 ${
-										selectedUser.avatar && typeof selectedUser.avatar === "string" && selectedUser.avatar.trim() !== "" ? "absolute inset-0" : ""
+										selectedUser.avatar && typeof selectedUser.avatar === "string" && selectedUser.avatar.trim() !== "" ? "hidden" : ""
 									}`}
 								>
-									{selectedUser.displayName.charAt(0).toUpperCase()}
+									{selectedUser.displayName && selectedUser.displayName.length > 0 ? selectedUser.displayName.charAt(0).toUpperCase() : "?"}
 								</div>
 							</div>
 							
