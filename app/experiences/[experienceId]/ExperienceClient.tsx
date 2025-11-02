@@ -67,16 +67,28 @@ export default function ExperienceClient({
 			console.log("Fetched users data:", data);
 			if (data.leaderboard) {
 				console.log(`Setting ${data.leaderboard.length} users`);
-				console.log("Users with names:", data.leaderboard.map((u: UserEntry) => ({
-					userId: u.userId,
-					displayName: u.displayName,
-					displayNameType: typeof u.displayName,
-					displayNameLength: u.displayName?.length,
-					username: u.username,
-					avatar: u.avatar,
-					hasAvatar: !!u.avatar
-				})));
-				setUsers(data.leaderboard);
+			console.log("Users with names:", data.leaderboard.map((u: UserEntry) => ({
+				userId: u.userId,
+				displayName: u.displayName,
+				displayNameType: typeof u.displayName,
+				displayNameLength: u.displayName?.length,
+				displayNameTruthy: !!u.displayName,
+				username: u.username,
+				avatar: u.avatar,
+				hasAvatar: !!u.avatar
+			})));
+			// Debug: Check first user's displayName before setting
+			if (data.leaderboard.length > 0) {
+				const firstUser = data.leaderboard[0];
+				console.log("🔍 First user before setUsers:", {
+					userId: firstUser.userId,
+					displayName: firstUser.displayName,
+					displayNameRaw: JSON.stringify(firstUser.displayName),
+					hasDisplayName: 'displayName' in firstUser,
+					keys: Object.keys(firstUser)
+				});
+			}
+			setUsers(data.leaderboard);
 				return data.leaderboard;
 			} else {
 				console.warn("No leaderboard data in response:", data);
@@ -988,7 +1000,21 @@ export default function ExperienceClient({
 						</div>
 					) : (
 					<div className="space-y-3">
-						{filteredUsers.map((user) => (
+						{filteredUsers.map((user, index) => {
+							// Debug log for first few users
+							if (index < 3) {
+								const displayValue = (user.displayName && String(user.displayName).trim()) || user.username || `User ${user.userId.substring(0, 8)}`;
+								console.log(`🎨 Rendering user ${index}:`, {
+									userId: user.userId,
+									displayName: user.displayName,
+									displayNameType: typeof user.displayName,
+									displayNameValue: String(user.displayName || ''),
+									displayNameTrimmed: user.displayName ? String(user.displayName).trim() : '',
+									username: user.username,
+									willRender: displayValue
+								});
+							}
+							return (
 							<div
 								key={user.userId}
 								onClick={() => {
@@ -1000,7 +1026,7 @@ export default function ExperienceClient({
 											? "bg-blue-50 border-blue-300 shadow-sm"
 											: "bg-background hover:bg-gray-a2"
 									}`}
-								>
+							>
 								{/* Profile Picture */}
 								<div className="relative w-12 h-12 flex-shrink-0">
 									{user.avatar && typeof user.avatar === "string" && user.avatar.trim() !== "" ? (
@@ -1035,7 +1061,7 @@ export default function ExperienceClient({
 								{/* Name */}
 								<div className="flex-1">
 									<h3 className="font-semibold text-lg">
-										{user.displayName || user.username || `User ${user.userId.substring(0, 8)}`}
+										{(user.displayName && String(user.displayName).trim()) || user.username || `User ${user.userId.substring(0, 8)}`}
 										{user.userId === currentUserId && (
 											<span className="ml-2 text-sm text-blue-600 font-normal">(You)</span>
 										)}
