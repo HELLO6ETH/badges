@@ -437,7 +437,7 @@ export async function GET(request: NextRequest) {
 					// Try multiple possible property names for profile picture
 					// Log the actual user object to see what's available
 					const userObj = user as any;
-					const avatar = 
+					const avatarValue = 
 						userObj.profilePicture || 
 						userObj.profile_picture || 
 						userObj.avatar || 
@@ -449,18 +449,35 @@ export async function GET(request: NextRequest) {
 						userObj.profile_image ||
 						null;
 					
+					// Extract URL from avatar - it might be an object with a url property, or a string
+					let avatarUrl: string | null = null;
+					if (avatarValue) {
+						if (typeof avatarValue === 'string') {
+							avatarUrl = avatarValue;
+						} else if (typeof avatarValue === 'object' && avatarValue !== null) {
+							// Try to get URL from object properties
+							avatarUrl = avatarValue.url || 
+							           avatarValue.URL || 
+							           avatarValue.src ||
+							           avatarValue.href ||
+							           (typeof avatarValue.toString === 'function' ? avatarValue.toString() : null);
+						}
+					}
+					
 					// Log for debugging
-					if (!avatar) {
-						console.log(`⚠️ No avatar found for user ${userId}. Available keys:`, Object.keys(userObj));
-						console.log(`User object:`, JSON.stringify(userObj, null, 2));
+					if (!avatarUrl) {
+						console.log(`⚠️ No avatar URL found for user ${userId}. Available keys:`, Object.keys(userObj));
+						if (avatarValue) {
+							console.log(`Avatar value (not URL):`, avatarValue);
+						}
 					} else {
-						console.log(`✅ Avatar found for user ${userId}:`, avatar);
+						console.log(`✅ Avatar URL found for user ${userId}:`, avatarUrl);
 					}
 					return {
 						userId: userId,
 						displayName: user.name || `@${user.username}`,
 						username: user.username,
-						avatar: avatar,
+						avatar: avatarUrl,
 						badges: badges,
 						totalBadges: totalBadges,
 						highestBadge: badges.length > 0 ? badges[0] : null,
