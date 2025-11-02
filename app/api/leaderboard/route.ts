@@ -477,9 +477,8 @@ export async function GET(request: NextRequest) {
 									}
 								}
 							}
-						} catch (err) {
-							console.warn("Failed to fetch members via products/subscriptions:", err);
-						}
+					} catch (err) {
+						console.warn("Failed to fetch members via products/subscriptions:", err);
 					}
 				} catch (err: any) {
 					console.warn("companies.retrieve failed:", err?.message || err);
